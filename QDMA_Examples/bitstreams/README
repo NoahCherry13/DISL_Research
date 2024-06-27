@@ -1,0 +1,24 @@
+Folder Containing Bitstreams for Xilinx QDMA Designs
+
+Descriptions:
+
+- QDMA_4PF_Test.bit
+  - Example design with 4 Physical Functions w/ different
+    number of allowed virtual functions
+    - PF1 -> 32 VFs
+    - PF2 -> 16 VFs
+    - PF3 -> 8  VFs
+    - PF4 -> 4  VFs
+  - Initialize Virtual Functions with mk_vfs.sh script
+  - Reset number of VFs by writing 0 to numvfs
+
+- vio_test_bitstream
+  - Design for testing enumeration of PFs when given VIO
+    vendor and dev IDs
+  - Physical Functionshould enumerate as VIO devices
+  - Unable to initialize VFs
+
+- top.bit
+  - Virtio Design
+  - Emulated VIO interface in hardware
+  - Requires VIO drivers

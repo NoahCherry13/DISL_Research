@@ -1,0 +1,10 @@
+vhdl xpm  \
+"/opt/Xilinx/Vivado/2021.2/data/ip/xpm/xpm_VCOMP.vhd" \
+
+vhdl axi_bram_ctrl_v4_1_6  \
+"../../../ipstatic/hdl/axi_bram_ctrl_v4_1_rfs.vhd" \
+
+vhdl xil_defaultlib  \
+"../../../../qdma_0_ex.gen/sources_1/ip/blk_mem_gen_0/sim/blk_mem_gen_0.vhd" \
+
+nosort

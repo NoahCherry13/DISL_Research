@@ -1,0 +1,18 @@
+#-----------------------------------------------------------
+# Vivado v2021.2 (64-bit)
+# SW Build 3367213 on Tue Oct 19 02:47:39 MDT 2021
+# IP Build 3369179 on Thu Oct 21 08:25:16 MDT 2021
+# Start of session at: Wed Jun  5 12:37:45 2024
+# Process ID: 15532
+# Current directory: /home/ncherry/qdma_no_sriov/qdma_0_ex
+# Command line: vivado qdma_0_ex.xpr
+# Log file: /home/ncherry/qdma_no_sriov/qdma_0_ex/vivado.log
+# Journal file: /home/ncherry/qdma_no_sriov/qdma_0_ex/vivado.jou
+# Running On: dhcp-acadmin-128-197-176-198.bu.edu, OS: Linux, CPU Frequency: 800.439 MHz, CPU Physical cores: 10, Host memory: 16388 MB
+#-----------------------------------------------------------
+start_gui
+open_project qdma_0_ex.xpr
+update_compile_order -fileset sources_1
+reset_run qdma_0_synth_1
+launch_runs impl_1 -jobs 10
+wait_on_run impl_1

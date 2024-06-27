@@ -1,0 +1,13 @@
+#-----------------------------------------------------------
+# Vivado v2021.2 (64-bit)
+# SW Build 3367213 on Tue Oct 19 02:47:39 MDT 2021
+# IP Build 3369179 on Thu Oct 21 08:25:16 MDT 2021
+# Start of session at: Wed Jun  5 12:40:53 2024
+# Process ID: 16284
+# Current directory: /home/ncherry/qdma_no_sriov/qdma_0_ex/qdma_0_ex.runs/axi_bram_ctrl_1_synth_1
+# Command line: vivado -log axi_bram_ctrl_1.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source axi_bram_ctrl_1.tcl
+# Log file: /home/ncherry/qdma_no_sriov/qdma_0_ex/qdma_0_ex.runs/axi_bram_ctrl_1_synth_1/axi_bram_ctrl_1.vds
+# Journal file: /home/ncherry/qdma_no_sriov/qdma_0_ex/qdma_0_ex.runs/axi_bram_ctrl_1_synth_1/vivado.jou
+# Running On: dhcp-acadmin-128-197-176-198.bu.edu, OS: Linux, CPU Frequency: 798.170 MHz, CPU Physical cores: 10, Host memory: 16388 MB
+#-----------------------------------------------------------
+source axi_bram_ctrl_1.tcl -notrace

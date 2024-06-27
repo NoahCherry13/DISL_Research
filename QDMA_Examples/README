@@ -1,0 +1,70 @@
+==============================|Description|================================
+Example designs, bitstreams, and shell scripts for programming, modifying,
+and interfacing with the Xilinx QDMA example designs
+
+============================|Example Designs|==============================
+		**ALL EXAMPLES ARE FOR THE XCVU13P BOARD**
+
+- qmda_no_sriov:
+  - SR-IOV capabilities are disabled
+  - No Virtual Functions
+  - 1 Physical Function
+
+- qdma_sriov_ex
+  - SR-IOV capabilities enabled
+  - 4 Physical Functions each with different number of assigned Virtual
+    Functions
+    - PF 1 -> 32 VF
+    - PF 2 -> 16 VF
+    - PF 3 -> 8  VF
+    - PF 4 -> 4  VF
+
+==============================|Bitstreams|=================================
+
+- no_sriov.bit (FIX ME)
+  - Bitstream corresponding to qdma_no_sriov project
+
+- QDMA_4PF_Test.bit
+  - Bitstream corresponding to qdma_sriov_ex project
+  - Requires qdma_pf and qdma_vf drivers to enumerate PCIe Device.See Build
+    Guide
+
+- vio_test_bitstream.bit
+  - Design for testing enumeration of PFs when given VIO vendor and dev IDs
+  - Physical Functionshould enumerate as VIO devices
+  - Unable to initialize VFs
+
+============================|Build Guide|=================================
+
+This section provides steps for reproducing our development environment
+
+- System Specs:
+  - Operating System: Fedora37
+  - Arch: x86_64
+  - Kernel Version:
+    - Virtio Designs use custom 6.9.0 patch
+    - SRIOV Designs use 6.1.90 longterm release for driver stability
+  - VM: KVM w/ Qemu
+    - LibVirt version 8.6.0
+    - Qemu-x86_64 version 7.0.0 (qemu-7.0.0-15.fc37)
+
+- Required Drivers:
+  - Xilinx QDMA Drivers (https://github.com/Xilinx/dma_ip_drivers)
+
+-Guide:
+
+1) Program FPGA with selected bitstream through Vivado Hardware manager
+2) Select correct kernel for chosen device
+   a) Virtio -> 6.9.0 VIO Patch
+   b) QDMA SRIOV -> 6.1.9 longterm patch
+3) Build and install QDMA Drivers if necessary
+   a) Clone QDMA Driver repository and follow instructions in README
+   b) Force mod persistence across reboot by executing
+      echo {module_name} > /etc/modules-load.d/{moduel_name}.conf
+      ex. echo qdma_pf > /etc/modules-load.d/qdma_pf.conf
+4) Soft Reboot or force PCIe bus re-enumeration
+5) Run lspci to verify proper device enumeration
+6) (optional) run mk_vfs.sh to create SR-IOV virtual functions if running
+   QDMA_4PF_Test.bit design
+   a) run lscpi again to verify VFs were created successfully
+   
