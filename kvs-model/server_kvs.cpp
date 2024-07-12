@@ -61,23 +61,54 @@ typedef struct
 } __attribute__((packed)) MemCD_Get_Req_t;
 
 // variables
-unordered_map<uint32_t, uint8_t*> kvs;
+unordered_map<uint32_t, uint8_t *> kvs;
 MemCD_Get_Req_t *rg1;
 MemCD_Set_Req_t *rs1;
-MemCD_HDR_t *rx1;
 MemCD_Resp_t *tx1;
 
 // //helper functions
-// void process_packet(MemCD_HDR_t *rx1){
+void rx_get(MemCD_Get_Req_t *rg1)
+{
+     
+}
 
-// }
+void rx_set(MemCD_Set_Req_t *rs1)
+{
+     // handle set request
+     uint32_t key = (uint32_t)rs1->key;
+     uint8_t *value = rs1->value;
+     if (kvs.count(key) <= 0)
+     {
+          kvs.insert(make_pair(key, value));
+          printf("Inserted New KV pair:\nkey: %x\nval: %hhn\n", key, value);
+     }
+     else
+     {
+          kvs[rs1->key] = rs1->value;
+     }
+}
+
+void process_packet(int clientSocket)
+{
+     MemCD_HDR_t *rx1 = (MemCD_HDR_t *)malloc(sizeof(MemCD_HDR_t));
+
+     // recieving data
+     recv(clientSocket, rx1, sizeof(MemCD_HDR_t), 0);
+     if (rx1->Opcode == 0x00)
+     {
+          rx_get((MemCD_Get_Req_t *)rx1);
+     }
+     else if (rx1->Opcode == 0x01)
+     {
+          rx_set((MemCD_Set_Req_t *)rx1);
+     }
+}
 
 int main()
 {
      // creating socket
      int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-     rx1 = (MemCD_HDR_t *)malloc(sizeof(MemCD_HDR_t));
      tx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
      // specifying the address
      sockaddr_in serverAddress;
@@ -93,28 +124,7 @@ int main()
      listen(serverSocket, 5);
      // accepting connection request
      int clientSocket = accept(serverSocket, nullptr, nullptr);
-     // recieving data
-     recv(clientSocket, rx1, sizeof(MemCD_HDR_t), 0);
-     if (rx1->Opcode == 0x00)
-     {
-          // handle get request
-          rg1 = (MemCD_Get_Req_t*)rx1;
-          
-     }
-     else if (rx1->Opcode == 0x01)
-     {
-          // handle set request
-          rs1 = (MemCD_Set_Req_t*)rx1;
-          uint32_t key = (uint32_t)rs1->key;
-          uint8_t *value = rs1->value;
-          if (kvs.count(key) <= 0){
-               kvs.insert(make_pair(key, value));
-               printf("Inserted New KV pair:\nkey: %x\nval: %hhn\n", key, value);
-          }else{
-               //kvs[rs1->key] = rs1->value;
-               printf("set\n");
-          }
-     }
+     process_packet(clientSocket);
      // closing the socket.
      close(serverSocket);
 
