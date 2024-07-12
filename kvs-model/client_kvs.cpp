@@ -60,6 +60,7 @@ int main()
     // sending connection request
     connect(clientSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
 
+    // populate packet metadata
     MemCD_Get_Req_t *g1;
     g1 = (MemCD_Get_Req_t *)malloc(sizeof(MemCD_Get_Req_t));
     g1->header.Magic = 0x80;
@@ -72,9 +73,12 @@ int main()
     g1->header.Opaque = 0;
     g1->header.CAS = 0;
 
+    // populate packet data
+    g1->key = 1;
+
     // sending data
-    const char *message = "1blue";
-    send(clientSocket, g1, sizeof(MemCD_HDR_t), 0);
+    send(clientSocket, g1, sizeof(MemCD_Get_Req_t), 0);
+
     // closing socket
     close(clientSocket);
 
