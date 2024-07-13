@@ -73,13 +73,13 @@ void sendGetRequest(int clientSocket)
     g1->header.CAS = 0;
 
     // populate packet data
-    g1->key = 1;
+    g1->key = 0x1;
 
     // sending data
     send(clientSocket, g1, sizeof(MemCD_Get_Req_t), 0);
 }
 
-void sendSetRequest(int clientServer)
+void sendSetRequest(int clientSocket)
 {
     MemCD_Set_Req_t *s1;
     s1 = (MemCD_Set_Req_t *)malloc(sizeof(MemCD_Set_Req_t));
@@ -94,26 +94,31 @@ void sendSetRequest(int clientServer)
     s1->header.CAS = 0;
     s1->extras_flags = 0;
     s1->extras_expiration = 0;
-    s1->key = 1;
+    s1->key = 0x00000001;
 
-    for (int i = 0; i < MAXPAYLOAD; i++)
-    {
-        s1->value[i] = rand();
-    }
+    send(clientSocket, s1, sizeof(MemCD_Set_Req_t), 0);
 }
 
 int main()
 {
+    MemCD_Resp_t *rx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
     // creating socket
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     // specifying address
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
+    serverAddress.sin_port = htons(PORT);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
     // sending connection request
     connect(clientSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
+    sendSetRequest(clientSocket);
+    printf("Sending Get Request...\n");
     sendGetRequest(clientSocket);
+    printf("Got Response from Server...\n");
+    int num_bits = recv(clientSocket, rx1, sizeof(MemCD_Resp_t), 0);
+    for(int i = 0; i < MAXPAYLOAD; i++){
+        printf("Data[%d]: %x\n", i, rx1->Data[i]);
+    }
     // closing socket
     close(clientSocket);
 

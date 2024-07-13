@@ -64,43 +64,110 @@ typedef struct
 unordered_map<uint32_t, uint8_t *> kvs;
 MemCD_Get_Req_t *rg1;
 MemCD_Set_Req_t *rs1;
-MemCD_Resp_t *tx1;
 
 // //helper functions
-void rx_get(MemCD_Get_Req_t *rg1)
+void rx_get(MemCD_Get_Req_t *rg1, int clientSocket)
 {
-     
+
+     // MemCD_Resp_t *tx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
+     // uint32_t key = rg1->key;
+     // printf("Get Key: %x\n", key);
+     // memcpy(tx1->Data, "Hello", 16);
+     // tx1->Magic = 0;
+     // tx1->Opcode = 0x02;
+     // tx1->KeyLength = 0x0;
+     // tx1->ExtrasLength = 0x0;
+     // tx1->DataType = 0x0;
+     // tx1->Status = 0x0;
+     // tx1->BodyLength = 0x0;
+     // tx1->Opaque = 0x0;
+     // tx1->CAS = 0x0;
+     // send(clientSocket, tx1, sizeof(MemCD_Resp_t), 0);
+     // printf("Sent Packet\n");
 }
 
 void rx_set(MemCD_Set_Req_t *rs1)
 {
-     // handle set request
-     uint32_t key = (uint32_t)rs1->key;
-     uint8_t *value = rs1->value;
-     if (kvs.count(key) <= 0)
-     {
-          kvs.insert(make_pair(key, value));
-          printf("Inserted New KV pair:\nkey: %x\nval: %hhn\n", key, value);
-     }
-     else
-     {
-          kvs[rs1->key] = rs1->value;
-     }
+     // // handle set request
+     // uint32_t key = rs1->key;
+     // uint8_t *value;
+     // printf("\n)");
+
+     // if (kvs.count(key) <= 0)
+     // {
+
+     //      value = (uint8_t *)malloc(MAXPAYLOAD * sizeof(uint8_t));
+     //      printf("after malloc\n");
+     //      for (int i = 0; i < MAXPAYLOAD; i++)
+     //      {
+     //           value[i] = rs1->value[i];
+     //      }
+
+     //      kvs.insert(make_pair(key, value));
+     //      for (int i = 0; i < MAXPAYLOAD; i++)
+     //      {
+     //           printf("%c", rs1->value[i]);
+     //      }
+     // }
+     // else
+     // {
+     //      // kvs[rs1->key] = rs1->value;
+     // }
 }
 
 void process_packet(int clientSocket)
 {
-     MemCD_HDR_t *rx1 = (MemCD_HDR_t *)malloc(sizeof(MemCD_HDR_t));
-
+     MemCD_Set_Req_t *rx1 = (MemCD_Set_Req_t *)malloc(sizeof(MemCD_Set_Req_t));
      // recieving data
-     recv(clientSocket, rx1, sizeof(MemCD_HDR_t), 0);
-     if (rx1->Opcode == 0x00)
+     int pktsz = recv(clientSocket, rx1, sizeof(MemCD_Set_Req_t), 0);
+     printf("Packet Size: %d\n", pktsz);
+     if (rx1->header.Opcode == 0x00)
      {
-          rx_get((MemCD_Get_Req_t *)rx1);
+          // rx_get((MemCD_Get_Req_t *)rx1, clientSocket);
+          MemCD_Resp_t *tx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
+          uint32_t key = ((MemCD_Get_Req_t *)rx1)->key;
+          for (int i = 0; i < MAXPAYLOAD; i++)
+          {
+               tx1->Data[i] = 'N';
+               printf("Data[%d]: %x\n", i, tx1->Data[i]);
+          }
+          tx1->Magic = 0;
+          tx1->Opcode = 0x02;
+          tx1->KeyLength = 0x0;
+          tx1->ExtrasLength = 0x0;
+          tx1->DataType = 0x0;
+          tx1->Status = 0x0;
+          tx1->BodyLength = 0x0;
+          tx1->Opaque = 0x0;
+          tx1->CAS = 0x0;
+          send(clientSocket, tx1, sizeof(MemCD_Resp_t), 0);
+          printf("Sent Packet\n");
      }
-     else if (rx1->Opcode == 0x01)
+     else if (rx1->header.Opcode == 0x01)
      {
-          rx_set((MemCD_Set_Req_t *)rx1);
+          // rx_set((MemCD_Set_Req_t *)rx1);
+          uint32_t key = rx1->key;
+          uint8_t *value;
+
+          if (kvs.count(key) <= 0)
+          {
+
+               value = (uint8_t *)malloc(MAXPAYLOAD * sizeof(uint8_t));
+               for (int i = 0; i < MAXPAYLOAD; i++)
+               {
+                    value[i] = rx1->value[i];
+               }
+
+               kvs.insert(make_pair(key, value));
+               for (int i = 0; i < MAXPAYLOAD; i++)
+               {
+                    printf("%x", kvs[key][i]);
+               }
+          }
+          else
+          {
+               // kvs[rs1->key] = rs1->value;
+          }
      }
 }
 
@@ -109,11 +176,10 @@ int main()
      // creating socket
      int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-     tx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
      // specifying the address
      sockaddr_in serverAddress;
      serverAddress.sin_family = AF_INET;
-     serverAddress.sin_port = htons(8080);
+     serverAddress.sin_port = htons(PORT);
      serverAddress.sin_addr.s_addr = INADDR_ANY;
 
      // binding socket.
@@ -124,6 +190,7 @@ int main()
      listen(serverSocket, 5);
      // accepting connection request
      int clientSocket = accept(serverSocket, nullptr, nullptr);
+     process_packet(clientSocket);
      process_packet(clientSocket);
      // closing the socket.
      close(serverSocket);
