@@ -1,5 +1,6 @@
 #include <cstring>
 #include <iostream>
+#include <arpa/inet.h> 
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -16,6 +17,7 @@ using namespace std;
 #define CPG 3.4 // Cycles per GHz -- Adjust to your computer
 #define SIZES 1 // MAKE 7
 #define ITERS 2
+#define IPADDR "127.0.0.1"
 
 // structures for memcopyd packets (simplified)
 typedef struct
@@ -119,8 +121,7 @@ void process_packet(int clientSocket)
 {
      MemCD_Set_Req_t *rx1 = (MemCD_Set_Req_t *)malloc(sizeof(MemCD_Set_Req_t));
      // recieving data
-     int pktsz = recv(clientSocket, rx1, sizeof(MemCD_Set_Req_t), 0);
-     printf("Packet Size: %d\n", pktsz);
+     recv(clientSocket, rx1, sizeof(MemCD_Set_Req_t), 0);
      if (rx1->header.Opcode == 0x00)
      {
           // rx_get((MemCD_Get_Req_t *)rx1, clientSocket);
@@ -129,7 +130,6 @@ void process_packet(int clientSocket)
           for (int i = 0; i < MAXPAYLOAD; i++)
           {
                tx1->Data[i] = 'N';
-               printf("Data[%d]: %x\n", i, tx1->Data[i]);
           }
           tx1->Magic = 0;
           tx1->Opcode = 0x02;
@@ -141,7 +141,8 @@ void process_packet(int clientSocket)
           tx1->Opaque = 0x0;
           tx1->CAS = 0x0;
           send(clientSocket, tx1, sizeof(MemCD_Resp_t), 0);
-          printf("Sent Packet\n");
+          free(tx1);
+          free(rx1);
      }
      else if (rx1->header.Opcode == 0x01)
      {
@@ -157,16 +158,15 @@ void process_packet(int clientSocket)
                {
                     value[i] = rx1->value[i];
                }
-
                kvs.insert(make_pair(key, value));
-               for (int i = 0; i < MAXPAYLOAD; i++)
-               {
-                    printf("%x", kvs[key][i]);
-               }
           }
           else
           {
-               // kvs[rs1->key] = rs1->value;
+               for (int i = 0; i < MAXPAYLOAD; i++)
+               {
+                    kvs[key][i] = rs1->value[i];
+               }
+               
           }
      }
 }
@@ -180,7 +180,7 @@ int main()
      sockaddr_in serverAddress;
      serverAddress.sin_family = AF_INET;
      serverAddress.sin_port = htons(PORT);
-     serverAddress.sin_addr.s_addr = INADDR_ANY;
+     serverAddress.sin_addr.s_addr = inet_addr(IPADDR);
 
      // binding socket.
      bind(serverSocket, (struct sockaddr *)&serverAddress,
@@ -190,9 +190,10 @@ int main()
      listen(serverSocket, 5);
      // accepting connection request
      int clientSocket = accept(serverSocket, nullptr, nullptr);
-     process_packet(clientSocket);
-     process_packet(clientSocket);
+     while(1){ process_packet(clientSocket);}
+     //process_packet(clientSocket);
      // closing the socket.
+     printf("closing the socket\n");
      close(serverSocket);
 
      return 0;

@@ -5,6 +5,10 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
+#include <math.h>
+#include <arpa/inet.h> 
+#include <netinet/in.h> 
 
 #define PORT 44000
 #define MAXLINE 4096
@@ -13,7 +17,10 @@
 #define GIG 1000000000
 #define CPG 3.4 // Cycles per GHz -- Adjust to your computer
 #define SIZES 1 // MAKE 7
-#define ITERS 2
+#define ITERS 10000
+#define IPADDR "127.0.0.1"
+
+long int avg_time = 0;
 
 typedef struct
 {
@@ -57,8 +64,33 @@ typedef struct
     uint8_t value[MAXPAYLOAD];
 } __attribute__((packed)) MemCD_Set_Req_t;
 
-void sendGetRequest(int clientSocket)
+struct timespec diff(struct timespec start, struct timespec end)
 {
+    struct timespec temp;
+    if ((end.tv_nsec - start.tv_nsec) < 0)
+    {
+        temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+        temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+    }
+    else
+    {
+        temp.tv_sec = end.tv_sec - start.tv_sec;
+        temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+    }
+    return temp;
+}
+
+void sendGetRequest(int clientSocket, int iterations)
+{
+    // timing structures
+    struct timespec diff(struct timespec start, struct timespec end);
+    struct timespec time1, time2;
+    struct timespec time_stamp[SIZES][2][ITERS];
+    int clock_gettime(clockid_t clk_id, struct timespec * tp);
+
+    // allocate receive buffer packet
+    MemCD_Resp_t *rx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
+
     // populate packet metadata
     MemCD_Get_Req_t *g1;
     g1 = (MemCD_Get_Req_t *)malloc(sizeof(MemCD_Get_Req_t));
@@ -76,12 +108,24 @@ void sendGetRequest(int clientSocket)
     g1->key = 0x1;
 
     // sending data
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
     send(clientSocket, g1, sizeof(MemCD_Get_Req_t), 0);
+    int num_bits = recv(clientSocket, rx1, sizeof(MemCD_Resp_t), 0);
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+    time_stamp[0][0][0] = diff(time1, time2);
+    
+    // Print timing results
+    avg_time +=(long int)((double)(CPG) * (double)(GIG * time_stamp[0][0][0].tv_sec + time_stamp[0][0][0].tv_nsec));
+    if(iterations == ITERS)printf("Avg Time: %8ld\n", avg_time/iterations);
+    free(g1);
+    free(rx1);
 }
 
 void sendSetRequest(int clientSocket)
 {
     MemCD_Set_Req_t *s1;
+
+    // set packet fields
     s1 = (MemCD_Set_Req_t *)malloc(sizeof(MemCD_Set_Req_t));
     s1->header.Magic = 0x80;
     s1->header.Opcode = 0x01;
@@ -96,29 +140,24 @@ void sendSetRequest(int clientSocket)
     s1->extras_expiration = 0;
     s1->key = 0x00000001;
 
+    // send set request
     send(clientSocket, s1, sizeof(MemCD_Set_Req_t), 0);
+    free(s1);
 }
 
 int main()
 {
-    MemCD_Resp_t *rx1 = (MemCD_Resp_t *)malloc(sizeof(MemCD_Resp_t));
     // creating socket
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     // specifying address
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(PORT);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_addr.s_addr = inet_addr(IPADDR);
     // sending connection request
     connect(clientSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
     sendSetRequest(clientSocket);
-    printf("Sending Get Request...\n");
-    sendGetRequest(clientSocket);
-    printf("Got Response from Server...\n");
-    int num_bits = recv(clientSocket, rx1, sizeof(MemCD_Resp_t), 0);
-    for(int i = 0; i < MAXPAYLOAD; i++){
-        printf("Data[%d]: %x\n", i, rx1->Data[i]);
-    }
+    for(int i = 0; i < ITERS; i++) sendGetRequest(clientSocket, i+1);
     // closing socket
     close(clientSocket);
 
