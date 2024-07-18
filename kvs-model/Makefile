@@ -1,21 +1,14 @@
-all: server client kvs_perf
+all: server client
 
-server: server_kvs.cpp
-	g++ server_kvs.cpp -o server
+server: server_perf.cpp
+	g++ server_perf.cpp -o serv
 
-client: client_kvs.cpp
-	g++ client_kvs.cpp -o client
-
-kvs_perf: kvs_perf.c
-	g++ kvs_perf.c -o kvs_perf
-
-run:
-	./server &
-	./client
+client: client_perf.cpp
+	g++ client_perf.cpp -o cli
 
 packet_store: packet_store.cpp -o packet_store
 
 dictionary: dictionary.cpp -o dictionary
 
 clean:
-	rm client server dictionary packet_store kvs_perf
+	rm cli serv dictionary packet_store

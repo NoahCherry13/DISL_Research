@@ -11,12 +11,15 @@
 
 #define PORT	 44000
 #define MAXLINE 4096
-#define MAXPAYLOAD 16 // Size of value in Bytes
+#define MAXPAYLOAD 32 // Size of value in Bytes
+#define FILENAME "timing32.csv"
+#define DST_IP "128.197.176.148" // PHO340 desktop
+// #define DST_IP "10.210.2.8" // codes1
+//#define DST_IP "192.168.0.2" // FPGA
 
 #define GIG 1000000000
 #define SIZES 1           // MAKE 7
 #define ITERS 2
-
 #define SEED 513
 
 using namespace std;
@@ -77,21 +80,23 @@ int main(int argc, char *argv[])
   int iter;
   int NUM_ITER;
   uint64_t roundtrip_time;
+  double avg_latency = 0;
 
-	int sockfd_send, sockfd_recv; 
-	void *buffer; 
-	struct sockaddr_in servaddr, cliaddr; 
+  int sockfd; 
+  void *buffer; 
+  struct sockaddr_in servaddr, recvaddr; 
+
   MemCD_Set_Req_t *s1;
   MemCD_Get_Req_t *g1;
   MemCD_Resp_t    *r1;
-	int n;
-	socklen_t len; 
+  int n;
+  socklen_t len; 
 
   if(argc < 2){
     printf("Value size defaulted to %d Bytes.\n", MAXPAYLOAD);
     SIZE = MAXPAYLOAD;
     printf("Number of iterations defaulted to 100.");
-    NUM_ITER = 100;
+    NUM_ITER = 10000;
   } else if(argc < 3){
     SIZE = atoi(argv[1]);
     printf("Number of iterations defaulted to 100.");
@@ -143,42 +148,26 @@ int main(int argc, char *argv[])
 
 
 	// Creating socket file descriptors
-	if ( (sockfd_send = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
-		perror("Send socket creation failed"); 
-		exit(EXIT_FAILURE); 
-	} 
-
-	if ( (sockfd_recv = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
-		perror("Receive socket creation failed"); 
+	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
+		perror("Socket creation failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 
 	memset(&servaddr, 0, sizeof(servaddr)); 
-	memset(&cliaddr, 0, sizeof(cliaddr)); 
+	memset(&recvaddr, 0, sizeof(recvaddr)); 
 	
 	// Filling server information 
 	servaddr.sin_family = AF_INET; 
 	servaddr.sin_port = htons(PORT); 
-  if (inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr) <= 0) {
+  if (inet_pton(AF_INET, DST_IP, &servaddr.sin_addr) <= 0) {
       printf("\nInvalid server address/ Address not supported \n");
       return -1;
   }	
 
-  // Filling client information
-  cliaddr.sin_family = AF_INET;
-  cliaddr.sin_port = htons(PORT);
-  if (inet_pton(AF_INET, "127.0.0.1", &cliaddr.sin_addr) <= 0) {
-      printf("\nInvalid client address/ Address not supported \n");
-      return -1;
-  }	
-
-	// Bind the socket with the server address 
-	if ( bind(sockfd_recv, (const struct sockaddr *)&servaddr, 
-			sizeof(servaddr)) < 0 ) 
-	{ 
-		perror("bind failed"); 
-		exit(EXIT_FAILURE); 
-	} 
+  // Filling receiver information
+    recvaddr.sin_family = AF_INET;
+    recvaddr.sin_port = htons(PORT);
+    recvaddr.sin_addr.s_addr = INADDR_ANY;
 
   
   // Initialize rand()
@@ -188,15 +177,15 @@ int main(int argc, char *argv[])
   // Set requests 
   printf("\nSet requests...\n");
   while(SetSuccess < NUM_ITER){ // Go on until there are NUM_ITER entries in the KVS
-    s1->key = rand();
+    s1->key = (uint32_t)rand()%8192;
     for(int i=0; i<SIZE; i++){
-      s1->value[i] = rand();
+      s1->value[i] = (uint8_t)i;
     }
-
+	
     SetReqs++;
-    sendto(sockfd_send, s1, sizeof(MemCD_Set_Req_t), MSG_CONFIRM,
-          (const struct sockaddr *) &cliaddr, sizeof(cliaddr));
-    n = recvfrom(sockfd_recv, buffer, MAXLINE, MSG_WAITALL, NULL, &len);
+    sendto(sockfd, s1, sizeof(MemCD_Set_Req_t), MSG_CONFIRM,
+          (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    n = recvfrom(sockfd, buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &recvaddr, &len);
     r1 = (MemCD_Resp_t *) buffer;
     if(r1->Opcode == 0x01 && r1->Status == 0x00){ // Successful Set request
       SetSuccess++;
@@ -206,18 +195,20 @@ int main(int argc, char *argv[])
   }
 
   // Re-initialize the random number generator
-  srand(SEED);
+  
   printf("\n\nRunning get tests...\n");
-
+  srand(SEED);
   while(GetSuccess < NUM_ITER){ // Go on until we have read NUM_ITER entries successfully
-    g1->key = rand();
+    g1->key = (uint32_t)rand()%8192;
     GetReqs++;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-    sendto(sockfd_send, g1, sizeof(MemCD_Get_Req_t), MSG_CONFIRM,
-          (const struct sockaddr *) &cliaddr, sizeof(cliaddr));
-    n = recvfrom(sockfd_recv, buffer, MAXLINE, MSG_WAITALL, NULL, &len);
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
 
+    // start timer and set packet
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+    sendto(sockfd, g1, sizeof(MemCD_Get_Req_t), MSG_CONFIRM,
+          (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    n = recvfrom(sockfd, buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &recvaddr, &len);
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+    
     r1 = (MemCD_Resp_t *) buffer;
     if(r1->Opcode == 0x00 && r1->Status == 0x00){ // Successful Get request
       time_stamp[GetSuccess] = diff(time1,time2);
@@ -227,13 +218,15 @@ int main(int argc, char *argv[])
     }
   }
 
+
   // Print timing results
-  printf("\nGet times..\n");
+  FILE *datafile = fopen(FILENAME, "a");
   for (int i = 0; i < NUM_ITER; i++) {
     roundtrip_time = (uint64_t) GIG*time_stamp[i].tv_sec + time_stamp[i].tv_nsec;
-    printf("%8ld\n", roundtrip_time);
+    fprintf(datafile, "%8ld\n", roundtrip_time);
+    avg_latency += roundtrip_time;
   }
-
+  avg_latency = avg_latency/(double)NUM_ITER; 
   // Print stats
   printf("\n\n SetReqs = %d\n", SetReqs);
   printf("SetSuccess = %d\n", SetSuccess);
@@ -241,7 +234,7 @@ int main(int argc, char *argv[])
   printf("\n GetReqs = %d\n", GetReqs);
   printf("GetSuccess = %d\n", GetSuccess);
   printf("GetFail = %d\n", GetFail);
-
+  fprintf(datafile, "%f\n", avg_latency);
   return 0;
 }
 
